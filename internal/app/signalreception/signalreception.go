@@ -1,7 +1,7 @@
 package signalreception
 
 import (
-	"github.com/GZ91/linkreduct/internal/app/logger"
+	"github.com/GZ91/bonussystem/internal/app/logger"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"

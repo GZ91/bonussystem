@@ -14,7 +14,7 @@ func Configuration() *config.Config {
 	return conf
 }
 
-func ReadParams() (string, string, string) {
+func ReadParams() (string, string, string, string) {
 	envVars, err := envs.ReadEnv()
 	if err != nil {
 		logger.Log.Error("error when reading environment variables", zap.Error(err))
@@ -38,5 +38,9 @@ func ReadParams() (string, string, string) {
 			}
 		}
 	}
-	return AddressPort, AddressBaseData, AddressAccrual
+	SecretKey := envVars.SecretKey
+	if SecretKey == "" {
+		SecretKey = "SecretKey"
+	}
+	return AddressPort, AddressBaseData, AddressAccrual, SecretKey
 }

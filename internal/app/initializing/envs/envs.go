@@ -6,6 +6,7 @@ type EnvVars struct {
 	AddressPort     string `env:"RUN_ADDRESS"`
 	AddressBaseData string `env:"DATABASE_URI"`
 	AddressAccrual  string `env:"ACCRUAL_SYSTEM_ADDRESS"`
+	SecretKey       string `env:"SECRET_KEY"`
 }
 
 func ReadEnv() (*EnvVars, error) {
