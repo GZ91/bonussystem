@@ -44,14 +44,14 @@ func Start(ctx context.Context, conf Configer) error {
 	NodeAuthentication := authentication.New(conf)
 	router.Use(NodeAuthentication.Authentication)
 
-	router.Get("/api/user/orders", handls.Orders)
+	router.Get("/api/user/orders", handls.OrdersGet)
 	router.Get("/api/user/balance", handls.Balance)
-	router.Get("/api/user/withdrawals", handls.WithdrawalsGet)
+	router.Get("/api/user/withdrawals", handls.Withdrawals)
 
+	router.Post("/api/user/orders", handls.OrdersPost)
 	router.Post("/api/user/register", handls.Register)
 	router.Post("/api/user/login", handls.Login)
 	router.Post("/api/user/balance/withdraw", handls.Withdraw)
-	router.Post("/api/user/withdrawals", handls.WithdrawalsPost)
 
 	Server := http.Server{}
 	Server.Addr = conf.GetAddressPort()

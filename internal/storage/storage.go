@@ -8,6 +8,7 @@ import (
 	"github.com/GZ91/bonussystem/internal/errorsapp"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
+	"time"
 )
 
 type Configer interface {
@@ -52,6 +53,10 @@ func (r *NodeStorage) createTables(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = createTableOrders(ctx, con)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -61,7 +66,21 @@ func createTableUsers(ctx context.Context, con *sql.Conn) error {
 	id serial PRIMARY KEY,
 	userID VARCHAR(45)  NOT NULL,
 	login VARCHAR(250) NOT NULL,
-    password VARCHAR(250) NOT NULL
+    password VARCHAR(250) NOT NULL,
+    balance INT DEFAULT 0
+);`)
+	return err
+}
+
+func createTableOrders(ctx context.Context, con *sql.Conn) error {
+	_, err := con.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS orders 
+(
+	id serial PRIMARY KEY,
+	userID VARCHAR(45)  NOT NULL,
+	uploaded_at timestamp  NOT NULL,
+	number VARCHAR(250) NOT NULL,
+    status VARCHAR(250) NOT NULL,
+    accural INT DEFAULT 0
 );`)
 	return err
 }
@@ -113,6 +132,39 @@ func (r *NodeStorage) AuthenticationUser(ctx context.Context, login, password st
 	return userID, nil
 }
 
-func (n *NodeStorage) Close() error {
+func (r *NodeStorage) Close() error {
+	r.db.Close()
+	return nil
+}
+
+func (r *NodeStorage) CreateOrder(ctx context.Context, number, userID string) error {
+
+	con, err := r.db.Begin()
+	if err != nil {
+		logger.Log.Error("failed to connect to the database", zap.Error(err))
+		return err
+	}
+	defer con.Rollback()
+	row := con.QueryRowContext(ctx, "SELECT COUNT(id) FROM orders WHERE number = $1", number)
+	var countNumber int
+	row.Scan(&countNumber)
+	if countNumber != 0 {
+
+		row2 := con.QueryRowContext(ctx, "SELECT COUNT(id) FROM orders WHERE number = $1 AND userID = $2", number, userID)
+		var countNumberUser int
+		row2.Scan(&countNumberUser)
+		if countNumberUser != 0 {
+			return errorsapp.ErrOrderAlreadyThisUser
+		}
+		return errorsapp.ErrOrderAlreadyAnotherUser
+	}
+
+	_, err = con.ExecContext(ctx, "INSERT INTO orders (userID, number, uploaded_at, status) VALUES ($1, $2, $3, $4);",
+		userID, number, time.Now(), "NOW")
+	if err != nil {
+		return err
+	}
+
+	con.Commit()
 	return nil
 }
