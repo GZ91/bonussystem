@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/GZ91/bonussystem/internal/app/logger"
 	"github.com/GZ91/bonussystem/internal/errorsapp"
+	"github.com/GZ91/bonussystem/internal/models"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 	"time"
@@ -145,11 +146,11 @@ func (r *NodeStorage) CreateOrder(ctx context.Context, number, userID string) er
 		return err
 	}
 	defer con.Rollback()
+
 	row := con.QueryRowContext(ctx, "SELECT COUNT(id) FROM orders WHERE number = $1", number)
 	var countNumber int
 	row.Scan(&countNumber)
 	if countNumber != 0 {
-
 		row2 := con.QueryRowContext(ctx, "SELECT COUNT(id) FROM orders WHERE number = $1 AND userID = $2", number, userID)
 		var countNumberUser int
 		row2.Scan(&countNumberUser)
@@ -160,11 +161,36 @@ func (r *NodeStorage) CreateOrder(ctx context.Context, number, userID string) er
 	}
 
 	_, err = con.ExecContext(ctx, "INSERT INTO orders (userID, number, uploaded_at, status) VALUES ($1, $2, $3, $4);",
-		userID, number, time.Now(), "NOW")
+		userID, number, time.Now().Format(time.RFC3339), "NEW")
 	if err != nil {
 		return err
 	}
 
 	con.Commit()
 	return nil
+}
+
+func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error) {
+	var orders []models.DataOrder
+
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer con.Close()
+	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accural FROM orders WHERE userID = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	var uploadedAt, number, status string
+	var accural int
+	for rows.Next() {
+		rows.Scan(&uploadedAt, &number, &status, &accural)
+		data := models.DataOrder{Number: number, Status: status, UploadedAt: uploadedAt, Accural: accural}
+		orders = append(orders, data)
+	}
+	if len(orders) == 0 {
+		return nil, errorsapp.ErrNoRecords
+	}
+	return orders, nil
 }

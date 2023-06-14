@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type Storage interface {
 	CreateNewUser(context.Context, string, string, string) error
 	AuthenticationUser(ctx context.Context, login, password string) (string, error)
 	CreateOrder(ctx context.Context, number, userID string) error
+	GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error)
 }
 
 type NodeService struct {
@@ -99,4 +101,27 @@ func luhnAlgorithm(number string) bool {
 		isSecond = !isSecond
 	}
 	return sum%10 == 0
+}
+
+func (r *NodeService) GetOrders(ctx context.Context, userID string) ([]models.DataOrderForJSON, error) {
+	dataOrders, err := r.nodeStorage.GetOrders(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	var dataOrdersForJSON []models.DataOrderForJSON
+	for _, val := range dataOrders {
+		strAccural := ConvretAccuralToString(val.Accural)
+		data := models.DataOrderForJSON{Number: val.Number, UploadedAt: val.UploadedAt, Status: val.Status, Accural: strAccural}
+		dataOrdersForJSON = append(dataOrdersForJSON, data)
+
+	}
+	return dataOrdersForJSON, nil
+}
+
+func ConvretAccuralToString(accural int) string {
+	data := strconv.Itoa(accural)
+	if accural == 0 {
+		return ""
+	}
+	return data[0:len(data)-2] + "." + data[len(data)-2:]
 }
