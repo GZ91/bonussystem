@@ -7,7 +7,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -21,6 +20,7 @@ type Storage interface {
 	AuthenticationUser(ctx context.Context, login, password string) (string, error)
 	CreateOrder(ctx context.Context, number, userID string) error
 	GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error)
+	GetBalance(ctx context.Context, userID string) (current float64, withdrawn float64, err error)
 }
 
 type NodeService struct {
@@ -103,25 +103,15 @@ func luhnAlgorithm(number string) bool {
 	return sum%10 == 0
 }
 
-func (r *NodeService) GetOrders(ctx context.Context, userID string) ([]models.DataOrderForJSON, error) {
-	dataOrders, err := r.nodeStorage.GetOrders(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	var dataOrdersForJSON []models.DataOrderForJSON
-	for _, val := range dataOrders {
-		strAccural := ConvretAccuralToString(val.Accural)
-		data := models.DataOrderForJSON{Number: val.Number, UploadedAt: val.UploadedAt, Status: val.Status, Accural: strAccural}
-		dataOrdersForJSON = append(dataOrdersForJSON, data)
-
-	}
-	return dataOrdersForJSON, nil
+func (r *NodeService) GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error) {
+	return r.nodeStorage.GetOrders(ctx, userID)
 }
 
-func ConvretAccuralToString(accural int) string {
-	data := strconv.Itoa(accural)
-	if accural == 0 {
-		return ""
+func (r *NodeService) GetBalance(ctx context.Context, userID string) (models.DataBalance, error) {
+	current, withdrawn, err := r.nodeStorage.GetBalance(ctx, userID)
+	if err != nil {
+		return models.DataBalance{}, err
 	}
-	return data[0:len(data)-2] + "." + data[len(data)-2:]
+	data := models.DataBalance{Current: current, Withdrawn: withdrawn}
+	return data, nil
 }

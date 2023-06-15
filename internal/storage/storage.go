@@ -58,6 +58,10 @@ func (r *NodeStorage) createTables(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = createTableClients(ctx, con)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -67,8 +71,7 @@ func createTableUsers(ctx context.Context, con *sql.Conn) error {
 	id serial PRIMARY KEY,
 	userID VARCHAR(45)  NOT NULL,
 	login VARCHAR(250) NOT NULL,
-    password VARCHAR(250) NOT NULL,
-    balance INT DEFAULT 0
+    password VARCHAR(250) NOT NULL
 );`)
 	return err
 }
@@ -81,7 +84,18 @@ func createTableOrders(ctx context.Context, con *sql.Conn) error {
 	uploaded_at timestamp  NOT NULL,
 	number VARCHAR(250) NOT NULL,
     status VARCHAR(250) NOT NULL,
-    accural INT DEFAULT 0
+    accural FLOAT DEFAULT 0.0
+);`)
+	return err
+}
+
+func createTableClients(ctx context.Context, con *sql.Conn) error {
+	_, err := con.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS clients 
+(
+	id serial PRIMARY KEY,
+	userID VARCHAR(45)  NOT NULL,
+	current FLOAT DEFAULT 0.0,
+    withdrawn FLOAT DEFAULT 0.0
 );`)
 	return err
 }
@@ -178,12 +192,12 @@ func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.Da
 		return nil, err
 	}
 	defer con.Close()
-	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accural FROM orders WHERE userID = $1", userID)
+	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accural FROM orders WHERE userID = $1 ORDER BY uploaded_at", userID)
 	if err != nil {
 		return nil, err
 	}
 	var uploadedAt, number, status string
-	var accural int
+	var accural float64
 	for rows.Next() {
 		rows.Scan(&uploadedAt, &number, &status, &accural)
 		data := models.DataOrder{Number: number, Status: status, UploadedAt: uploadedAt, Accural: accural}
@@ -193,4 +207,19 @@ func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.Da
 		return nil, errorsapp.ErrNoRecords
 	}
 	return orders, nil
+}
+
+func (r *NodeStorage) GetBalance(ctx context.Context, userID string) (float64, float64, error) {
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer con.Close()
+	row := con.QueryRowContext(ctx, "SELECT current, withdrawn FROM clients WHERE userID = $1", userID)
+	var current, withdrawn float64
+	err = row.Scan(&current, &withdrawn)
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return 0, 0, nil
+	}
+	return current, withdrawn, nil
 }

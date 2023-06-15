@@ -16,7 +16,8 @@ type Service interface {
 	CreateNewUser(ctx context.Context, login, password string) (*http.Cookie, error)
 	AuthenticationUser(ctx context.Context, login, password string) (*http.Cookie, error)
 	DownloadOrder(ctx context.Context, number, userID string) error
-	GetOrders(ctx context.Context, userID string) ([]models.DataOrderForJSON, error)
+	GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error)
+	GetBalance(ctx context.Context, userID string) (models.DataBalance, error)
 }
 
 type Handlers struct {
@@ -85,7 +86,21 @@ func (h *Handlers) OrdersGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) Balance(w http.ResponseWriter, r *http.Request) {
-
+	var userIDCTX models.CtxString = "userID"
+	userID := r.Context().Value(userIDCTX).(string)
+	data, err := h.NodeService.GetBalance(r.Context(), userID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dataJSON)
 }
 
 func (h *Handlers) Withdrawals(w http.ResponseWriter, r *http.Request) {

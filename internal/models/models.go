@@ -15,15 +15,13 @@ type Claims struct {
 }
 
 type DataOrder struct {
-	Number     string
-	Status     string
-	Accural    int
-	UploadedAt string
+	Number     string  `json:"number"`
+	Status     string  `json:"status"`
+	Accural    float64 `json:"accural,omitempty"`
+	UploadedAt string  `json:"uploaded_at"`
 }
 
-type DataOrderForJSON struct {
-	Number     string `json:"number"`
-	Status     string `json:"status"`
-	Accural    string `json:"accural,omitempty"`
-	UploadedAt string `json:"uploaded_at"`
+type DataBalance struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
 }
