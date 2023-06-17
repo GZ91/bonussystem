@@ -13,3 +13,5 @@ var ErrOrderAlreadyThisUser = errors.New("this order has already been entered by
 var ErrOrderAlreadyAnotherUser = errors.New("this order has already been entered by another user")
 
 var ErrNoRecords = errors.New("no records")
+
+var ErrInsufficientFunds = errors.New("insufficient funds")

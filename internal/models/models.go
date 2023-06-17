@@ -25,3 +25,14 @@ type DataBalance struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 }
+
+type WithdrawData struct {
+	Order string  `json:"order"`
+	Sum   float64 `json:"sum"`
+}
+
+type WithdrawalsData struct {
+	Order       string  `json:"order"`
+	Sum         float64 `json:"sum"`
+	ProcessedAt string  `json:"processed_at"`
+}

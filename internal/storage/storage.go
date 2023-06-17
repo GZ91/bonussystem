@@ -62,6 +62,10 @@ func (r *NodeStorage) createTables(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = createTableWithdraws(ctx, con)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -96,6 +100,18 @@ func createTableClients(ctx context.Context, con *sql.Conn) error {
 	userID VARCHAR(45)  NOT NULL,
 	current FLOAT DEFAULT 0.0,
     withdrawn FLOAT DEFAULT 0.0
+);`)
+	return err
+}
+
+func createTableWithdraws(ctx context.Context, con *sql.Conn) error {
+	_, err := con.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS withdraws 
+(
+	id serial PRIMARY KEY,
+	userID VARCHAR(45)  NOT NULL,
+	numberOrder VARCHAR(45) NOT NULL,
+    sum FLOAT DEFAULT 0.0,
+    processed_at timestamp  NOT NULL
 );`)
 	return err
 }
@@ -222,4 +238,45 @@ func (r *NodeStorage) GetBalance(ctx context.Context, userID string) (float64, f
 		return 0, 0, nil
 	}
 	return current, withdrawn, nil
+}
+
+func (r *NodeStorage) Withdraw(ctx context.Context, NewCurrent, NewWithdraw float64, data models.WithdrawData, userID string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx, "UPDATE clients SET current = $1, withdrawn = $2 WHERE userID = $3", NewCurrent, NewWithdraw, userID)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO withdraws(userID, numberOrder, sum, processed_at)VALUES ($1, $2, $3, $4);", userID, data.Order, data.Sum, time.Now().Format(time.RFC3339))
+	if err != nil {
+		return err
+	}
+	tx.Commit()
+	return nil
+}
+
+func (r *NodeStorage) Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error) {
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer con.Close()
+	rows, err := con.QueryContext(ctx, "SELECT numberOrder, sum, processed_at FROM withdraws WHERE userID = $1 ORDER BY processed_at", userID)
+	if err != nil {
+		return nil, err
+	}
+	var returndata []models.WithdrawalsData
+
+	for rows.Next() {
+		var data models.WithdrawalsData
+		rows.Scan(&data.Order, &data.Sum, &data.ProcessedAt)
+		returndata = append(returndata, data)
+	}
+	if len(returndata) == 0 {
+		return nil, errorsapp.ErrNoRecords
+	}
+	return returndata, nil
 }

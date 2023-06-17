@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -21,15 +22,83 @@ type Storage interface {
 	CreateOrder(ctx context.Context, number, userID string) error
 	GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error)
 	GetBalance(ctx context.Context, userID string) (current float64, withdrawn float64, err error)
+	Withdraw(ctx context.Context, NewCurrent, NewWithdraw float64, data models.WithdrawData, userID string) error
+	Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error)
 }
 
 type NodeService struct {
 	nodeStorage Storage
 	conf        Configer
+	mutexOrder  sync.RWMutex
+	orderLocks  map[string]chan struct{}
+	mutexClient sync.RWMutex
+	clientLocks map[string]chan struct{}
 }
 
 func New(ctx context.Context, storage Storage, conf Configer) (*NodeService, error) {
-	return &NodeService{nodeStorage: storage, conf: conf}, nil
+	Node := &NodeService{nodeStorage: storage, conf: conf}
+	Node.orderLocks = make(map[string]chan struct{})
+	Node.clientLocks = make(map[string]chan struct{})
+	return Node, nil
+}
+
+func (r *NodeService) LockOrder(number string) {
+	var val chan struct{}
+	for {
+		r.mutexOrder.RLock()
+		var ok bool
+		val, ok = r.orderLocks[number]
+		if !ok {
+			r.mutexOrder.RUnlock()
+			r.mutexOrder.Lock()
+			r.orderLocks[number] = make(chan struct{}, 1)
+			r.mutexOrder.Unlock()
+		} else {
+			r.mutexOrder.RUnlock()
+			break
+		}
+	}
+	val <- struct{}{}
+}
+
+func (r *NodeService) UnclockOrder(number string) {
+	r.mutexOrder.RLock()
+	defer r.mutexOrder.RUnlock()
+	val, ok := r.orderLocks[number]
+	if !ok {
+		return
+	}
+	<-val
+}
+
+func (r *NodeService) LockClient(userID string) {
+	var val chan struct{}
+	for {
+		r.mutexClient.RLock()
+		var ok bool
+		val, ok = r.clientLocks[userID]
+		if !ok {
+			r.mutexClient.RUnlock()
+			r.mutexClient.Lock()
+			struc := make(chan struct{}, 1)
+			r.clientLocks[userID] = struc
+			r.mutexClient.Unlock()
+		} else {
+			r.mutexClient.RUnlock()
+			break
+		}
+	}
+	val <- struct{}{}
+}
+
+func (r *NodeService) UnclockClient(userID string) {
+	r.mutexClient.RLock()
+	defer r.mutexClient.RUnlock()
+	val, ok := r.clientLocks[userID]
+	if !ok {
+		return
+	}
+	<-val
 }
 
 func (r *NodeService) CreateNewUser(ctx context.Context, login, password string) (*http.Cookie, error) {
@@ -73,7 +142,8 @@ func (r *NodeService) AuthenticationUser(ctx context.Context, login, password st
 }
 
 func (r *NodeService) DownloadOrder(ctx context.Context, number, userID string) error {
-
+	r.LockOrder(number)
+	defer r.UnclockOrder(number)
 	if !luhnAlgorithm(number) {
 		return errorsapp.ErrIncorrectOrderNumber
 	}
@@ -114,4 +184,28 @@ func (r *NodeService) GetBalance(ctx context.Context, userID string) (models.Dat
 	}
 	data := models.DataBalance{Current: current, Withdrawn: withdrawn}
 	return data, nil
+}
+
+func (r *NodeService) Withdraw(ctx context.Context, data models.WithdrawData, userID string) error {
+	r.LockClient(userID)
+	defer r.UnclockClient(userID)
+	current, withdraw, err := r.nodeStorage.GetBalance(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !luhnAlgorithm(data.Order) {
+		return errorsapp.ErrIncorrectOrderNumber
+	}
+	if data.Sum > current {
+		return errorsapp.ErrInsufficientFunds
+	}
+	err = r.nodeStorage.Withdraw(ctx, current-data.Sum, withdraw+data.Sum, data, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *NodeService) Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error) {
+	return r.nodeStorage.Withdrawals(ctx, userID)
 }

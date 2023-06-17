@@ -18,6 +18,8 @@ type Service interface {
 	DownloadOrder(ctx context.Context, number, userID string) error
 	GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error)
 	GetBalance(ctx context.Context, userID string) (models.DataBalance, error)
+	Withdraw(ctx context.Context, data models.WithdrawData, userID string) error
+	Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error)
 }
 
 type Handlers struct {
@@ -104,7 +106,22 @@ func (h *Handlers) Balance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) Withdrawals(w http.ResponseWriter, r *http.Request) {
-
+	var userIDCTX models.CtxString = "userID"
+	userID := r.Context().Value(userIDCTX).(string)
+	data, err := h.NodeService.Withdrawals(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, errorsapp.ErrNoRecords) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Log.Error("error when trying to output a write-off report", zap.Error(err))
+		return
+	}
+	dataJson, err := json.Marshal(data)
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(dataJson)
 }
 
 func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
@@ -172,5 +189,32 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) Withdraw(w http.ResponseWriter, r *http.Request) {
-
+	var userIDCTX models.CtxString = "userID"
+	userID := r.Context().Value(userIDCTX).(string)
+	textBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var data models.WithdrawData
+	err = json.Unmarshal(textBody, &data)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = h.NodeService.Withdraw(r.Context(), data, userID)
+	if err != nil {
+		if errors.Is(err, errorsapp.ErrInsufficientFunds) {
+			w.WriteHeader(http.StatusPaymentRequired)
+			return
+		}
+		if errors.Is(err, errorsapp.ErrIncorrectOrderNumber) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Log.Error("debit error", zap.Error(err))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
