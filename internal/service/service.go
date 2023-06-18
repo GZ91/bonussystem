@@ -2,10 +2,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/GZ91/bonussystem/internal/app/logger"
 	"github.com/GZ91/bonussystem/internal/errorsapp"
 	"github.com/GZ91/bonussystem/internal/models"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -24,6 +28,8 @@ type Storage interface {
 	GetBalance(ctx context.Context, userID string) (current float64, withdrawn float64, err error)
 	Withdraw(ctx context.Context, NewCurrent, NewWithdraw float64, data models.WithdrawData, userID string) error
 	Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error)
+	GetOrdersForProcessing(ctx context.Context) ([]models.DataForProcessing, error)
+	NewBalance(ctx context.Context, NewCurrent float64, userID string) error
 }
 
 type NodeService struct {
@@ -208,4 +214,53 @@ func (r *NodeService) Withdraw(ctx context.Context, data models.WithdrawData, us
 
 func (r *NodeService) Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error) {
 	return r.nodeStorage.Withdrawals(ctx, userID)
+}
+
+func (r *NodeService) ProcessingOrders(ctx context.Context) {
+
+	addressServiceProcessing := r.conf.GetAddressAccrual()
+	for {
+		dataForProcessing, err := r.nodeStorage.GetOrdersForProcessing(ctx)
+		if err != nil {
+			logger.Log.Error("GetOrdersForProcessing", zap.Error(err))
+			break
+		}
+		for _, val := range dataForProcessing {
+			responce, err := http.Get(addressServiceProcessing + "/" + val.Order)
+			if err != nil {
+				logger.Log.Error("http.Get:"+addressServiceProcessing+"/"+val.Order, zap.Error(err))
+				break
+			}
+			textBody, err := io.ReadAll(responce.Body)
+			if err != nil {
+				logger.Log.Error("error when reading the request body", zap.Error(err))
+				break
+			}
+			var data models.ResponceAccural
+			err = json.Unmarshal(textBody, &data)
+			if err != nil {
+				logger.Log.Error("error when convert body json in struct", zap.Error(err))
+				break
+			}
+			if data.Status == val.Status {
+				break
+			}
+			if data.Status == "PROCESSED" {
+				r.LockClient(val.UserID)
+				current, _, err := r.nodeStorage.GetBalance(ctx, val.UserID)
+				if err != nil {
+					logger.Log.Error("error when receiving a balance", zap.Error(err))
+					break
+				}
+				newCurrent := current + data.Accural
+				err = r.nodeStorage.NewBalance(ctx, newCurrent, val.UserID)
+				if err != nil {
+					logger.Log.Error("error when writing a new balance", zap.Error(err))
+					break
+				}
+				r.UnclockClient(val.UserID)
+			}
+		}
+		time.Sleep(time.Second * 10)
+	}
 }

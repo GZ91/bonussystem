@@ -36,3 +36,15 @@ type WithdrawalsData struct {
 	Sum         float64 `json:"sum"`
 	ProcessedAt string  `json:"processed_at"`
 }
+
+type DataForProcessing struct {
+	Order  string
+	UserID string
+	Status string
+}
+
+type ResponceAccural struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accural float64 `json:"accural,omitempty"`
+}

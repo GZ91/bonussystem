@@ -280,3 +280,32 @@ func (r *NodeStorage) Withdrawals(ctx context.Context, userID string) ([]models.
 	}
 	return returndata, nil
 }
+
+func (r *NodeStorage) GetOrdersForProcessing(ctx context.Context) ([]models.DataForProcessing, error) {
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer con.Close()
+	rows, err := con.QueryContext(ctx, "SELECT number, userID, status FROM orders WHERE status = 'NEW' || status = 'PROCESSING' "+
+		"|| status = 'REGISTERED'")
+	if err != nil {
+		return nil, err
+	}
+	var data []models.DataForProcessing
+	var val models.DataForProcessing
+	for rows.Next() {
+		rows.Scan(&val.Order, &val.UserID, &val.Status)
+		data = append(data, val)
+	}
+	return data, nil
+}
+
+func (r *NodeStorage) NewBalance(ctx context.Context, NewCurrent float64, userID string) error {
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = con.ExecContext(ctx, "UPDATE clients SET current = $1 WHERE userID = $2", NewCurrent, userID)
+	return err
+}
