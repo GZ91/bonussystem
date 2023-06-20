@@ -243,7 +243,7 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 			var data models.ResponceAccural
 			err = json.Unmarshal(textBody, &data)
 			if err != nil {
-				logger.Log.Error("error when convert body json in struct", zap.Error(err))
+				logger.Log.Error("error when convert body json in struct", zap.Error(err), zap.String("text", string(textBody)))
 				break
 			}
 			if data.Status == val.Status {
