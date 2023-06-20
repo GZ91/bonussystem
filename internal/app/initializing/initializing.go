@@ -9,7 +9,7 @@ import (
 )
 
 func Configuration() *config.Config {
-	logger.Initializing("error")
+	logger.Initializing("info")
 	conf := config.New(ReadParams())
 	return conf
 }

@@ -265,6 +265,7 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 				}
 				newCurrent := current + data.Accural
 				err = r.nodeStorage.NewBalance(ctx, newCurrent, val.UserID)
+				logger.Log.Info("New balance", zap.Float64("value", newCurrent))
 				if err != nil {
 					logger.Log.Error("error when writing a new balance", zap.Error(err))
 					break
