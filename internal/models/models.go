@@ -17,7 +17,7 @@ type Claims struct {
 type DataOrder struct {
 	Number     string  `json:"number"`
 	Status     string  `json:"status"`
-	Accural    float64 `json:"accural,omitempty"`
+	Accrual    float64 `json:"accural,omitempty"`
 	UploadedAt string  `json:"uploaded_at"`
 }
 
@@ -46,5 +46,5 @@ type DataForProcessing struct {
 type ResponceAccural struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
-	Accural float64 `json:"accural,omitempty"`
+	Accrual float64 `json:"accrual,omitempty"`
 }

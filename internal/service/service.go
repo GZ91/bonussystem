@@ -264,7 +264,7 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 					logger.Log.Error("error when receiving a balance", zap.Error(err))
 					break
 				}
-				newCurrent := current + data.Accural
+				newCurrent := current + data.Accrual
 				err = r.nodeStorage.NewBalance(ctx, newCurrent, val.UserID)
 				logger.Log.Info("New balance", zap.Float64("value", newCurrent))
 				if err != nil {
@@ -273,7 +273,7 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 				}
 				r.UnclockClient(val.UserID)
 			}
-			err = r.nodeStorage.NewStatusOrder(ctx, data.Order, data.Status, data.Accural)
+			err = r.nodeStorage.NewStatusOrder(ctx, data.Order, data.Status, data.Accrual)
 			if err != nil {
 				logger.Log.Error("error when writing a new status order", zap.Error(err))
 				break

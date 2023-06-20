@@ -88,7 +88,7 @@ func createTableOrders(ctx context.Context, con *sql.Conn) error {
 	uploaded_at timestamp  NOT NULL,
 	number VARCHAR(250) NOT NULL,
     status VARCHAR(250) NOT NULL,
-    accural FLOAT DEFAULT 0.0
+    accrual FLOAT DEFAULT 0.0
 );`)
 	return err
 }
@@ -214,15 +214,15 @@ func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.Da
 		return nil, err
 	}
 	defer con.Close()
-	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accural FROM orders WHERE userID = $1 ORDER BY uploaded_at", userID)
+	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accrual FROM orders WHERE userID = $1 ORDER BY uploaded_at", userID)
 	if err != nil {
 		return nil, err
 	}
 	var uploadedAt, number, status string
-	var accural float64
+	var accrual float64
 	for rows.Next() {
-		rows.Scan(&uploadedAt, &number, &status, &accural)
-		data := models.DataOrder{Number: number, Status: status, UploadedAt: uploadedAt, Accural: accural}
+		rows.Scan(&uploadedAt, &number, &status, &accrual)
+		data := models.DataOrder{Number: number, Status: status, UploadedAt: uploadedAt, Accrual: accrual}
 		orders = append(orders, data)
 	}
 	if len(orders) == 0 {
@@ -316,12 +316,12 @@ func (r *NodeStorage) NewBalance(ctx context.Context, NewCurrent float64, userID
 	return err
 }
 
-func (r *NodeStorage) NewStatusOrder(ctx context.Context, number, status string, accural float64) error {
+func (r *NodeStorage) NewStatusOrder(ctx context.Context, number, status string, accrual float64) error {
 	con, err := r.db.Conn(ctx)
 	if err != nil {
 		return err
 	}
-	_, err = con.ExecContext(ctx, "UPDATE orders SET status = $1, accural = $2 WHERE number = $3 ", status, accural, number)
+	_, err = con.ExecContext(ctx, "UPDATE orders SET status = $1, accrual = $2 WHERE number = $3 ", status, accrual, number)
 	if err != nil {
 		return err
 	}
