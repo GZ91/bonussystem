@@ -136,7 +136,13 @@ func (r *NodeStorage) CreateNewUser(ctx context.Context, userID, login, password
 	_, err = con.ExecContext(ctx, "INSERT INTO users(userID, login, password) VALUES ($1, $2, $3);",
 		userID, login, password)
 	if err != nil {
-		logger.Log.Error("error when adding a record to the database", zap.Error(err))
+		logger.Log.Error("error when adding a record to the database users", zap.Error(err))
+		return err
+	}
+	_, err = con.ExecContext(ctx, "INSERT INTO clients(userID, current, withdrawn) VALUES ($1, 0, 0);",
+		userID)
+	if err != nil {
+		logger.Log.Error("error when adding a record to the database clients", zap.Error(err))
 		return err
 	}
 
