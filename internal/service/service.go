@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"io"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -190,7 +191,7 @@ func (r *NodeService) GetBalance(ctx context.Context, userID string) (models.Dat
 	if err != nil {
 		return models.DataBalance{}, err
 	}
-	data := models.DataBalance{Current: current, Withdrawn: withdrawn}
+	data := models.DataBalance{Current: math.Floor(current*100) / 100, Withdrawn: math.Floor(withdrawn*100) / 100}
 	return data, nil
 }
 
