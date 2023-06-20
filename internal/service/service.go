@@ -230,7 +230,10 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 			break
 		}
 		for _, val := range dataForProcessing {
-			responce, err := http.Get(addressServiceProcessing + "/" + val.Order)
+			responce, err := http.Get(addressServiceProcessing + "/api/orders/" + val.Order)
+			if responce.StatusCode != http.StatusOK {
+				continue
+			}
 			if err != nil {
 				logger.Log.Error("http.Get:"+addressServiceProcessing+"/"+val.Order, zap.Error(err))
 				break
