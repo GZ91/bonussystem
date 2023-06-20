@@ -248,6 +248,7 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 			}
 			var data models.ResponceAccural
 			err = json.Unmarshal(textBody, &data)
+			logger.Log.Info("text body", zap.String("value", string(textBody)))
 			if err != nil {
 				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
 				logger.Log.Error("error when convert body json in struct", zap.Error(err), zap.String("text", string(textBody)))
