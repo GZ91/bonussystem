@@ -30,6 +30,7 @@ type Storage interface {
 	Withdrawals(ctx context.Context, userID string) ([]models.WithdrawalsData, error)
 	GetOrdersForProcessing(ctx context.Context) ([]models.DataForProcessing, error)
 	NewBalance(ctx context.Context, NewCurrent float64, userID string) error
+	NewStatusOrder(ctx context.Context, number, status string, accural float64) error
 }
 
 type NodeService struct {
@@ -45,6 +46,7 @@ func New(ctx context.Context, storage Storage, conf Configer) (*NodeService, err
 	Node := &NodeService{nodeStorage: storage, conf: conf}
 	Node.orderLocks = make(map[string]chan struct{})
 	Node.clientLocks = make(map[string]chan struct{})
+	go Node.ProcessingOrders(ctx)
 	return Node, nil
 }
 
@@ -219,6 +221,7 @@ func (r *NodeService) Withdrawals(ctx context.Context, userID string) ([]models.
 func (r *NodeService) ProcessingOrders(ctx context.Context) {
 
 	addressServiceProcessing := r.conf.GetAddressAccrual()
+	timer := time.NewTimer(time.Second * 10)
 	for {
 		dataForProcessing, err := r.nodeStorage.GetOrdersForProcessing(ctx)
 		if err != nil {
@@ -260,7 +263,16 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 				}
 				r.UnclockClient(val.UserID)
 			}
+			err = r.nodeStorage.NewStatusOrder(ctx, data.Order, data.Status, data.Accural)
+			if err != nil {
+				logger.Log.Error("error when writing a new status order", zap.Error(err))
+				break
+			}
 		}
-		time.Sleep(time.Second * 10)
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+		}
 	}
 }

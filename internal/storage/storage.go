@@ -293,8 +293,8 @@ func (r *NodeStorage) GetOrdersForProcessing(ctx context.Context) ([]models.Data
 		return nil, err
 	}
 	defer con.Close()
-	rows, err := con.QueryContext(ctx, "SELECT number, userID, status FROM orders WHERE status = 'NEW' || status = 'PROCESSING' "+
-		"|| status = 'REGISTERED'")
+	rows, err := con.QueryContext(ctx, "SELECT number, userID, status FROM orders WHERE status = 'NEW' OR status = 'PROCESSING' "+
+		"OR status = 'REGISTERED'")
 	if err != nil {
 		return nil, err
 	}
@@ -314,4 +314,16 @@ func (r *NodeStorage) NewBalance(ctx context.Context, NewCurrent float64, userID
 	}
 	_, err = con.ExecContext(ctx, "UPDATE clients SET current = $1 WHERE userID = $2", NewCurrent, userID)
 	return err
+}
+
+func (r *NodeStorage) NewStatusOrder(ctx context.Context, number, status string, accural float64) error {
+	con, err := r.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = con.ExecContext(ctx, "UPDATE orders status = $1, accural = $2 WHERE number = $3 ", status, accural, number)
+	if err != nil {
+		return err
+	}
+	return nil
 }
