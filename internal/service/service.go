@@ -223,7 +223,7 @@ func (r *NodeService) Withdrawals(ctx context.Context, userID string) ([]models.
 func (r *NodeService) ProcessingOrders(ctx context.Context) {
 
 	addressServiceProcessing := r.conf.GetAddressAccrual()
-	timer := time.NewTimer(time.Second * 10)
+	timer := time.NewTimer(time.Second * 1)
 	for {
 		dataForProcessing, err := r.nodeStorage.GetOrdersForProcessing(ctx)
 		if err != nil {
