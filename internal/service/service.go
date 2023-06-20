@@ -12,6 +12,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -231,11 +232,8 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 		}
 		for _, val := range dataForProcessing {
 			responce, err := http.Get(addressServiceProcessing + "/api/orders/" + val.Order)
-			if responce.StatusCode != http.StatusOK {
-				continue
-			}
 			if err != nil {
-				logger.Log.Error("http.Get:"+addressServiceProcessing+"/"+val.Order, zap.Error(err))
+				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
 				break
 			}
 			textBody, err := io.ReadAll(responce.Body)
@@ -243,10 +241,15 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 				logger.Log.Error("error when reading the request body", zap.Error(err))
 				break
 			}
+			if responce.StatusCode != http.StatusOK {
+				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.String("StatusCode", strconv.Itoa(responce.StatusCode)),
+					zap.String("text responce", string(textBody)))
+				continue
+			}
 			var data models.ResponceAccural
 			err = json.Unmarshal(textBody, &data)
 			if err != nil {
-				logger.Log.Error("http.Get:"+addressServiceProcessing+"/"+val.Order, zap.Error(err))
+				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
 				logger.Log.Error("error when convert body json in struct", zap.Error(err), zap.String("text", string(textBody)))
 				break
 			}

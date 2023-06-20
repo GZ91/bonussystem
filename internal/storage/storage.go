@@ -321,7 +321,7 @@ func (r *NodeStorage) NewStatusOrder(ctx context.Context, number, status string,
 	if err != nil {
 		return err
 	}
-	_, err = con.ExecContext(ctx, "UPDATE orders status = $1, accural = $2 WHERE number = $3 ", status, accural, number)
+	_, err = con.ExecContext(ctx, "UPDATE orders SET status = $1, accural = $2 WHERE number = $3 ", status, accural, number)
 	if err != nil {
 		return err
 	}
