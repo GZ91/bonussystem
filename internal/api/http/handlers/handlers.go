@@ -81,6 +81,7 @@ func (h *Handlers) OrdersGet(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	logger.Log.Info("Get orders", zap.String("JSON", string(data)))
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
