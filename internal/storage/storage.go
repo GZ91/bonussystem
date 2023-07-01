@@ -214,7 +214,7 @@ func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.Da
 		return nil, err
 	}
 	defer con.Close()
-	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accrual FROM orders WHERE userID = $1 ORDER BY uploaded_at", userID)
+	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accrual FROM orders ORDER BY uploaded_at")
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}
