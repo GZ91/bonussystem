@@ -193,6 +193,7 @@ func (r *NodeService) GetBalance(ctx context.Context, userID string) (models.Dat
 		return models.DataBalance{}, err
 	}
 	data := models.DataBalance{Current: math.Floor(current*100) / 100, Withdrawn: math.Floor(withdrawn*100) / 100}
+	logger.Log.Info("Get balance", zap.Float64("balance", data.Current), zap.String("userID", userID))
 	return data, nil
 }
 
