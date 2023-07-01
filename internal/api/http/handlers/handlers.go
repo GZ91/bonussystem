@@ -100,6 +100,7 @@ func (h *Handlers) Balance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	logger.Log.Info("handler balance returned", zap.String("JSON", dataJSON))
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(dataJSON)
