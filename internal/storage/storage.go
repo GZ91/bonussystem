@@ -215,6 +215,9 @@ func (r *NodeStorage) GetOrders(ctx context.Context, userID string) ([]models.Da
 	}
 	defer con.Close()
 	rows, err := con.QueryContext(ctx, "SELECT uploaded_at, number, status, accrual FROM orders WHERE userID = $1 ORDER BY uploaded_at", userID)
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +274,9 @@ func (r *NodeStorage) Withdrawals(ctx context.Context, userID string) ([]models.
 	}
 	defer con.Close()
 	rows, err := con.QueryContext(ctx, "SELECT numberOrder, sum, processed_at FROM withdraws WHERE userID = $1 ORDER BY processed_at", userID)
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -295,6 +301,9 @@ func (r *NodeStorage) GetOrdersForProcessing(ctx context.Context) ([]models.Data
 	defer con.Close()
 	rows, err := con.QueryContext(ctx, "SELECT number, userID, status FROM orders WHERE status = 'NEW' OR status = 'PROCESSING' "+
 		"OR status = 'REGISTERED'")
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -118,10 +118,18 @@ func (h *Handlers) Withdrawals(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Error("error when trying to output a write-off report", zap.Error(err))
 		return
 	}
-	dataJson, err := json.Marshal(data)
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Log.Error("error when trying convert data in json", zap.Error(err))
+		return
+	}
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(dataJson)
+	_, err = w.Write(dataJSON)
+	if err != nil {
+		logger.Log.Error("error when trying to write JSON text in the output message", zap.Error(err))
+	}
 }
 
 func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {

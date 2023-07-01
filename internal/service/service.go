@@ -132,7 +132,7 @@ func getAuthorizationCookie(SecretKey, userID string) (*http.Cookie, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, models.Claims{
 		UserID:           userID,
-		RegisteredClaims: &jwt.RegisteredClaims{ExpiresAt: &jwt.NumericDate{time.Now().Add(time.Hour * 24)}},
+		RegisteredClaims: &jwt.RegisteredClaims{ExpiresAt: &jwt.NumericDate{Time: time.Now().Add(time.Hour * 24)}},
 	})
 
 	tokenString, err := token.SignedString([]byte(SecretKey))
@@ -230,53 +230,56 @@ func (r *NodeService) ProcessingOrders(ctx context.Context) {
 			break
 		}
 		for _, val := range dataForProcessing {
-			responce, err := http.Get(addressServiceProcessing + "/api/orders/" + val.Order)
-			if err != nil {
-				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
-				break
-			}
-			textBody, err := io.ReadAll(responce.Body)
-			if err != nil {
-				logger.Log.Error("error when reading the request body", zap.Error(err))
-				break
-			}
-			if responce.StatusCode != http.StatusOK {
-				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.String("StatusCode", strconv.Itoa(responce.StatusCode)),
-					zap.String("text responce", string(textBody)))
-				continue
-			}
-			var data models.ResponceAccural
-			err = json.Unmarshal(textBody, &data)
-			logger.Log.Info("text body", zap.String("value", string(textBody)))
-			if err != nil {
-				logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
-				logger.Log.Error("error when convert body json in struct", zap.Error(err), zap.String("text", string(textBody)))
-				break
-			}
-			if data.Status == val.Status {
-				break
-			}
-			if data.Status == "PROCESSED" {
-				r.LockClient(val.UserID)
-				current, _, err := r.nodeStorage.GetBalance(ctx, val.UserID)
+			func() {
+				responce, err := http.Get(addressServiceProcessing + "/api/orders/" + val.Order)
 				if err != nil {
-					logger.Log.Error("error when receiving a balance", zap.Error(err))
-					break
+					logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
+					return
 				}
-				newCurrent := current + data.Accrual
-				err = r.nodeStorage.NewBalance(ctx, newCurrent, val.UserID)
-				logger.Log.Info("New balance", zap.Float64("value", newCurrent))
+				defer responce.Body.Close()
+				textBody, err := io.ReadAll(responce.Body)
 				if err != nil {
-					logger.Log.Error("error when writing a new balance", zap.Error(err))
-					break
+					logger.Log.Error("error when reading the request body", zap.Error(err))
+					return
 				}
-				r.UnclockClient(val.UserID)
-			}
-			err = r.nodeStorage.NewStatusOrder(ctx, data.Order, data.Status, data.Accrual)
-			if err != nil {
-				logger.Log.Error("error when writing a new status order", zap.Error(err))
-				break
-			}
+				if responce.StatusCode != http.StatusOK {
+					logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.String("StatusCode", strconv.Itoa(responce.StatusCode)),
+						zap.String("text responce", string(textBody)))
+					return
+				}
+				var data models.ResponceAccural
+				err = json.Unmarshal(textBody, &data)
+				logger.Log.Info("text body", zap.String("value", string(textBody)))
+				if err != nil {
+					logger.Log.Error("http.Get:"+addressServiceProcessing+"/api/orders/"+val.Order, zap.Error(err))
+					logger.Log.Error("error when convert body json in struct", zap.Error(err), zap.String("text", string(textBody)))
+					return
+				}
+				if data.Status == val.Status {
+					return
+				}
+				if data.Status == "PROCESSED" {
+					r.LockClient(val.UserID)
+					current, _, err := r.nodeStorage.GetBalance(ctx, val.UserID)
+					if err != nil {
+						logger.Log.Error("error when receiving a balance", zap.Error(err))
+						return
+					}
+					newCurrent := current + data.Accrual
+					err = r.nodeStorage.NewBalance(ctx, newCurrent, val.UserID)
+					logger.Log.Info("New balance", zap.Float64("value", newCurrent), zap.String("user", val.UserID))
+					if err != nil {
+						logger.Log.Error("error when writing a new balance", zap.Error(err))
+						return
+					}
+					r.UnclockClient(val.UserID)
+				}
+				err = r.nodeStorage.NewStatusOrder(ctx, data.Order, data.Status, data.Accrual)
+				if err != nil {
+					logger.Log.Error("error when writing a new status order", zap.Error(err))
+					return
+				}
+			}()
 		}
 		select {
 		case <-ctx.Done():

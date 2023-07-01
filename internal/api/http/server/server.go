@@ -38,7 +38,9 @@ func Start(ctx context.Context, conf Configer) error {
 	}
 
 	handls, err := handlers.New(ctx, NodeService)
-
+	if err != nil {
+		return err
+	}
 	router := chi.NewRouter()
 
 	NodeAuthentication := authentication.New(conf)
