@@ -12,6 +12,7 @@ import (
 	"net/http"
 )
 
+//go:generate mockery --name Service --with-expecter
 type Service interface {
 	CreateNewUser(ctx context.Context, login, password string) (*http.Cookie, error)
 	AuthenticationUser(ctx context.Context, login, password string) (*http.Cookie, error)
