@@ -17,11 +17,13 @@ import (
 	"time"
 )
 
+//go:generate mockery --name Configer --with-expecter
 type Configer interface {
 	GetAddressAccrual() string
 	GetSecretKey() string
 }
 
+//go:generate mockery --name Storage --with-expecter
 type Storage interface {
 	CreateNewUser(context.Context, string, string, string) error
 	AuthenticationUser(ctx context.Context, login, password string) (string, error)
