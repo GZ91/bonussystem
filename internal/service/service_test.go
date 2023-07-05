@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/GZ91/bonussystem/internal/app/logger"
+	"github.com/GZ91/bonussystem/internal/errorsapp"
 	mocksStorager "github.com/GZ91/bonussystem/internal/service/mocks"
 	"github.com/stretchr/testify/suite"
 	"sync"
@@ -63,6 +65,36 @@ func (suite *TestSuite) TestDownloadOrder() {
 				number: "12345678903"},
 			err: nil,
 		},
+		{
+			name: "Test 2",
+			fields: fields{
+				nodeStorage: suite.NodeStorage,
+				conf:        suite.Config,
+				orderLocks:  make(map[string]chan struct{}),
+				clientLocks: make(map[string]chan struct{}),
+			},
+			wantErr: false,
+			args: args{
+				userID: "user6",
+				ctx:    context.Background(),
+				number: "12345678902"},
+			err: errorsapp.ErrIncorrectOrderNumber,
+		},
+		{
+			name: "Test 3",
+			fields: fields{
+				nodeStorage: suite.NodeStorage,
+				conf:        suite.Config,
+				orderLocks:  make(map[string]chan struct{}),
+				clientLocks: make(map[string]chan struct{}),
+			},
+			wantErr: false,
+			args: args{
+				userID: "user7",
+				ctx:    context.Background(),
+				number: "12345678903"},
+			err: errors.New("test"),
+		},
 	}
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
@@ -76,7 +108,7 @@ func (suite *TestSuite) TestDownloadOrder() {
 			}
 			suite.NodeStorage.EXPECT().CreateOrder(tt.args.ctx, tt.args.number, tt.args.userID).Return(tt.err)
 			if err := r.DownloadOrder(tt.args.ctx, tt.args.number, tt.args.userID); (err != nil) != tt.wantErr {
-				suite.Assert().Errorf(err, "DownloadOrder() error = %v, wantErr %v", tt.wantErr)
+				suite.Assert().Equal(tt.err, err)
 			}
 		})
 	}
