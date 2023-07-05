@@ -153,19 +153,18 @@ func (r *NodeService) AuthenticationUser(ctx context.Context, login, password st
 	return getAuthorizationCookie(r.conf.GetSecretKey(), userID)
 }
 
-func (r *NodeService) DownloadOrder(ctx context.Context, number, userID string) error {
+func (r *NodeService) DownloadOrder(ctx context.Context, number, userID string) (err error) {
 	r.LockOrder(number)
 	defer r.UnclockOrder(number)
 	if !luhnAlgorithm(number) {
 		return errorsapp.ErrIncorrectOrderNumber
 	}
 
-	err := r.nodeStorage.CreateOrder(ctx, number, userID)
+	err = r.nodeStorage.CreateOrder(ctx, number, userID)
 	if err != nil {
-		return err
+		return
 	}
-
-	return nil
+	return
 }
 
 func luhnAlgorithm(number string) bool {

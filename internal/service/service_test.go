@@ -46,20 +46,22 @@ func (suite *TestSuite) TestDownloadOrder() {
 		fields  fields
 		args    args
 		wantErr bool
+		err     error
 	}{
 		{
 			name: "Test 1",
 			fields: fields{
-				nodeStorage: new(mocksStorager.Storage),
+				nodeStorage: suite.NodeStorage,
 				conf:        suite.Config,
 				orderLocks:  make(map[string]chan struct{}),
 				clientLocks: make(map[string]chan struct{}),
 			},
 			wantErr: false,
 			args: args{
-				userID: "user1",
+				userID: "user5",
 				ctx:    context.Background(),
 				number: "12345678903"},
+			err: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -72,7 +74,7 @@ func (suite *TestSuite) TestDownloadOrder() {
 				mutexClient: tt.fields.mutexClient,
 				clientLocks: tt.fields.clientLocks,
 			}
-			suite.NodeStorage.EXPECT().CreateOrder(tt.args.ctx, tt.args.number, tt.args.userID)
+			suite.NodeStorage.EXPECT().CreateOrder(tt.args.ctx, tt.args.number, tt.args.userID).Return(tt.err)
 			if err := r.DownloadOrder(tt.args.ctx, tt.args.number, tt.args.userID); (err != nil) != tt.wantErr {
 				suite.Assert().Errorf(err, "DownloadOrder() error = %v, wantErr %v", tt.wantErr)
 			}
