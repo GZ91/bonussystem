@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/GZ91/bonussystem/internal/api/http/handlers/mocks"
 	"github.com/GZ91/bonussystem/internal/app/logger"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -204,6 +206,76 @@ func (suite *TestSuite) TestOrdersGet() {
 			actualBody, _ := io.ReadAll(tt.args.w.Body)
 			suite.Assert().Equal(tt.expectedBody, string(actualBody))
 			tt.args.r.Body.Close()
+		})
+	}
+}
+
+func (suite *TestSuite) TestHandlers_Balance() {
+	type fields struct {
+		NodeService *mocks.Service
+		userID      string
+	}
+	type args struct {
+		w *httptest.ResponseRecorder
+		r *http.Request
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		args         args
+		returnstatus int
+		err          error
+	}{
+		{
+			name: "test1",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			fields: fields{
+				userID:      "user1",
+				NodeService: suite.NodeService},
+			returnstatus: http.StatusOK,
+			err:          nil,
+		},
+		{
+			name: "test2",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			returnstatus: http.StatusInternalServerError,
+			err:          errors.New("test"),
+			fields: fields{
+				userID:      "user2",
+				NodeService: suite.NodeService},
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			h := &Handlers{
+				NodeService: tt.fields.NodeService,
+			}
+			var userIDCTX models.CtxString = "userID"
+			tt.args.r = tt.args.r.WithContext(context.WithValue(tt.args.r.Context(), userIDCTX, tt.fields.userID))
+			dataForEqual := models.DataBalance{Current: 1000, Withdrawn: 0}
+			tt.fields.NodeService.EXPECT().GetBalance(tt.args.r.Context(), tt.fields.userID).Return(dataForEqual, tt.err).Maybe()
+			h.Balance(tt.args.w, tt.args.r)
+
+			suite.Assert().Equal(tt.args.w.Code, tt.returnstatus)
+			if tt.args.w.Code < 400 {
+				suite.Equal(tt.returnstatus, tt.args.w.Code)
+				bodyText, err := io.ReadAll(tt.args.w.Body)
+				if err != nil {
+					panic(err)
+				}
+				var expectedBody models.DataBalance
+				err = json.Unmarshal(bodyText, &expectedBody)
+				if err != nil {
+					panic(err)
+				}
+				suite.Assert().True(reflect.DeepEqual(expectedBody, dataForEqual))
+			}
 		})
 	}
 }
