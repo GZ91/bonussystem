@@ -279,3 +279,108 @@ func (suite *TestSuite) TestHandlers_Balance() {
 		})
 	}
 }
+
+func (suite *TestSuite) TestHandlers_Withdrawals() {
+	type fields struct {
+		NodeService   *mocks.Service
+		userID        string
+		dataReturn    []models.WithdrawalsData
+		errorReturned error
+	}
+	type args struct {
+		w *httptest.ResponseRecorder
+		r *http.Request
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		args         args
+		responseCode int
+	}{
+		{
+			name: "Test 1",
+			fields: fields{
+				userID: "userTest",
+				dataReturn: []models.WithdrawalsData{
+					{Order: "1234234234", ProcessedAt: "safewefw21321", Sum: 10},
+					{Order: "123422141434234", ProcessedAt: "safewefw21123321", Sum: 1033},
+				},
+				NodeService:   suite.NodeService,
+				errorReturned: nil,
+			},
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			responseCode: http.StatusOK,
+		},
+		{
+			name: "Test 2",
+			fields: fields{
+				userID: "userTest2",
+				dataReturn: []models.WithdrawalsData{
+					{Order: "1234234234", ProcessedAt: "safewefw21321", Sum: 10},
+					{Order: "123422141434234", ProcessedAt: "safewefw21123321", Sum: 1033},
+				},
+				NodeService:   suite.NodeService,
+				errorReturned: errorsapp.ErrNoRecords,
+			},
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			responseCode: http.StatusNoContent,
+		},
+		{
+			name: "Test 3",
+			fields: fields{
+				userID: "userTest3",
+				dataReturn: []models.WithdrawalsData{
+					{Order: "1234234234", ProcessedAt: "safewefw21321", Sum: 10},
+					{Order: "123422141434234", ProcessedAt: "safewefw21123321", Sum: 1033},
+				},
+				NodeService:   suite.NodeService,
+				errorReturned: errors.New("Test Error"),
+			},
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			responseCode: http.StatusInternalServerError,
+		},
+		{
+			name: "Test 3",
+			fields: fields{
+				userID:        "userTest4",
+				dataReturn:    nil,
+				NodeService:   suite.NodeService,
+				errorReturned: nil,
+			},
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/orders", strings.NewReader("")),
+				w: httptest.NewRecorder(),
+			},
+			responseCode: http.StatusInternalServerError,
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			h := &Handlers{
+				NodeService: tt.fields.NodeService,
+			}
+			var userIDCTX models.CtxString = "userID"
+			tt.args.r = tt.args.r.WithContext(context.WithValue(tt.args.r.Context(), userIDCTX, tt.fields.userID))
+			suite.NodeService.EXPECT().Withdrawals(tt.args.r.Context(), tt.fields.userID).Return(tt.fields.dataReturn, tt.fields.errorReturned).Maybe()
+			h.Withdrawals(tt.args.w, tt.args.r)
+			if tt.fields.dataReturn == nil {
+				dataJSON, err := json.Marshal(tt.fields.dataReturn)
+				suite.Assert().NoError(err)
+				byteReturned, err := io.ReadAll(tt.args.w.Body)
+				suite.Assert().NoError(err)
+				suite.Equal(dataJSON, byteReturned)
+			} else {
+				suite.Equal(tt.args.w.Code, tt.responseCode)
+			}
+		})
+	}
+}
