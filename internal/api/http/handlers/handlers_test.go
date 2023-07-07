@@ -384,3 +384,77 @@ func (suite *TestSuite) TestHandlers_Withdrawals() {
 		})
 	}
 }
+
+func (suite *TestSuite) TestHandlers_Register() {
+	type fields struct {
+		NodeService *mocks.Service
+		cook        *http.Cookie
+	}
+	type args struct {
+		w *httptest.ResponseRecorder
+		r *http.Request
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		args         args
+		statusReturn int
+		errReturn    error
+	}{
+		{
+			name: "Test 1",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
+					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+			},
+			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			statusReturn: http.StatusOK,
+			errReturn:    nil,
+		},
+		{
+			name: "Test 2",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
+					strings.NewReader(`{ "login": "<login>", "password":""}`)),
+			},
+			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			statusReturn: http.StatusBadRequest,
+			errReturn:    nil,
+		},
+		{
+			name: "Test 3",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
+					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+			},
+			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			statusReturn: http.StatusConflict,
+			errReturn:    errorsapp.ErrLoginAlreadyBorrowed,
+		},
+		{
+			name: "Test 4",
+			args: args{
+				w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
+					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+			},
+			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			statusReturn: http.StatusInternalServerError,
+			errReturn:    errors.New("Test error"),
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			h := &Handlers{
+				NodeService: tt.fields.NodeService,
+			}
+			suite.NodeService.EXPECT().CreateNewUser(tt.args.r.Context(), "<login>", "<password>").
+				Return(tt.fields.cook, tt.errReturn)
+			h.Register(tt.args.w, tt.args.r)
+			suite.Assert().Equal(tt.statusReturn, tt.args.w.Code)
+		})
+	}
+}
