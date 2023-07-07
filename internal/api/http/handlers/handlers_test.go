@@ -458,3 +458,92 @@ func (suite *TestSuite) TestHandlers_Register() {
 		})
 	}
 }
+
+func (suite *TestSuite) TestHandlers_Login() {
+	type fields struct {
+		NodeService Service
+		cook        *http.Cookie
+		login       string
+		password    string
+	}
+	type args struct {
+		w *httptest.ResponseRecorder
+		r *http.Request
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		args         args
+		statusReturn int
+		errReturn    error
+	}{
+		{
+			name: "Test 1",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/login", strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+				w: httptest.NewRecorder(),
+			},
+			fields: fields{
+				NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "<login>",
+				password: "<password>",
+			},
+			statusReturn: http.StatusOK,
+			errReturn:    nil,
+		},
+		{
+			name: "Test 2",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/login", strings.NewReader(`{ "login": "<login>2", "password": ""}`)),
+				w: httptest.NewRecorder(),
+			},
+			fields: fields{
+				NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "<login>2",
+				password: "<password>2",
+			},
+			statusReturn: http.StatusBadRequest,
+			errReturn:    nil,
+		},
+		{
+			name: "Test 3",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/login", strings.NewReader(`{ "login": "<login>3", "password": "<password>3"}`)),
+				w: httptest.NewRecorder(),
+			},
+			fields: fields{
+				NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "<login>3",
+				password: "<password>3",
+			},
+			statusReturn: http.StatusUnauthorized,
+			errReturn:    errorsapp.ErrNoFoundUser,
+		},
+
+		{
+			name: "Test 4",
+			args: args{
+				r: httptest.NewRequest(http.MethodGet, "/api/user/login", strings.NewReader(`{ "login": "<login>4", "password": "<password>4"}`)),
+				w: httptest.NewRecorder(),
+			},
+			fields: fields{
+				NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "<login>4",
+				password: "<password>4",
+			},
+			statusReturn: http.StatusInternalServerError,
+			errReturn:    errors.New("TestError"),
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			h := &Handlers{
+				NodeService: tt.fields.NodeService,
+			}
+			suite.NodeService.EXPECT().AuthenticationUser(tt.args.r.Context(), tt.fields.login, tt.fields.password).
+				Return(tt.fields.cook, tt.errReturn)
+			h.Login(tt.args.w, tt.args.r)
+			suite.Assert().Equal(tt.statusReturn, tt.args.w.Code)
+		})
+	}
+}
