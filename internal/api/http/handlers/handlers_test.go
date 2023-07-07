@@ -389,6 +389,8 @@ func (suite *TestSuite) TestHandlers_Register() {
 	type fields struct {
 		NodeService *mocks.Service
 		cook        *http.Cookie
+		login       string
+		password    string
 	}
 	type args struct {
 		w *httptest.ResponseRecorder
@@ -406,9 +408,13 @@ func (suite *TestSuite) TestHandlers_Register() {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
-					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+					strings.NewReader(`{ "login": "t1", "password": "t2"}`)),
 			},
-			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			fields: fields{
+				NodeService: suite.NodeService,
+				cook:        &http.Cookie{},
+				login:       "t1",
+				password:    "t2"},
 			statusReturn: http.StatusOK,
 			errReturn:    nil,
 		},
@@ -417,9 +423,11 @@ func (suite *TestSuite) TestHandlers_Register() {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
-					strings.NewReader(`{ "login": "<login>", "password":""}`)),
+					strings.NewReader(`{ "login": "t3", "password":""}`)),
 			},
-			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			fields: fields{NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "t3",
+				password: ""},
 			statusReturn: http.StatusBadRequest,
 			errReturn:    nil,
 		},
@@ -428,9 +436,11 @@ func (suite *TestSuite) TestHandlers_Register() {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
-					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+					strings.NewReader(`{ "login": "t5", "password": "t62"}`)),
 			},
-			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			fields: fields{NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "t5",
+				password: "t62"},
 			statusReturn: http.StatusConflict,
 			errReturn:    errorsapp.ErrLoginAlreadyBorrowed,
 		},
@@ -439,9 +449,11 @@ func (suite *TestSuite) TestHandlers_Register() {
 			args: args{
 				w: httptest.NewRecorder(),
 				r: httptest.NewRequest(http.MethodPost, "/api/user/register",
-					strings.NewReader(`{ "login": "<login>", "password": "<password>"}`)),
+					strings.NewReader(`{ "login": "t6", "password": "t7"}`)),
 			},
-			fields:       fields{NodeService: suite.NodeService, cook: &http.Cookie{}},
+			fields: fields{NodeService: suite.NodeService, cook: &http.Cookie{},
+				login:    "t6",
+				password: "t7"},
 			statusReturn: http.StatusInternalServerError,
 			errReturn:    errors.New("Test error"),
 		},
@@ -451,7 +463,7 @@ func (suite *TestSuite) TestHandlers_Register() {
 			h := &Handlers{
 				NodeService: tt.fields.NodeService,
 			}
-			suite.NodeService.EXPECT().CreateNewUser(tt.args.r.Context(), "<login>", "<password>").
+			suite.NodeService.EXPECT().CreateNewUser(tt.args.r.Context(), tt.fields.login, tt.fields.password).
 				Return(tt.fields.cook, tt.errReturn)
 			h.Register(tt.args.w, tt.args.r)
 			suite.Assert().Equal(tt.statusReturn, tt.args.w.Code)
@@ -544,6 +556,39 @@ func (suite *TestSuite) TestHandlers_Login() {
 				Return(tt.fields.cook, tt.errReturn)
 			h.Login(tt.args.w, tt.args.r)
 			suite.Assert().Equal(tt.statusReturn, tt.args.w.Code)
+		})
+	}
+}
+
+func (suite *TestSuite) TestHandlers_Withdraw() {
+	type fields struct {
+		NodeService  Service
+		statusReturn int
+		err          error
+	}
+	type args struct {
+		w *httptest.ResponseRecorder
+		r *http.Request
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			fields: fields{
+				NodeService:  suite.NodeService,
+				statusReturn: http.StatusOK,
+				err:          nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func() {
+			h := &Handlers{
+				NodeService: tt.fields.NodeService,
+			}
+			h.Withdraw(tt.args.w, tt.args.r)
 		})
 	}
 }
