@@ -565,6 +565,7 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 		NodeService  Service
 		statusReturn int
 		err          error
+		userID       string
 	}
 	type args struct {
 		w *httptest.ResponseRecorder
@@ -576,10 +577,51 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 		args   args
 	}{
 		{
+			name: "test1",
 			fields: fields{
 				NodeService:  suite.NodeService,
 				statusReturn: http.StatusOK,
 				err:          nil,
+				userID:       "userTest",
+			},
+			args: args{w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+			},
+		},
+		{
+			name: "test2",
+			fields: fields{
+				NodeService:  suite.NodeService,
+				statusReturn: http.StatusPaymentRequired,
+				err:          errorsapp.ErrInsufficientFunds,
+				userID:       "userTest",
+			},
+			args: args{w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+			},
+		},
+		{
+			name: "test3",
+			fields: fields{
+				NodeService:  suite.NodeService,
+				statusReturn: http.StatusUnprocessableEntity,
+				err:          errorsapp.ErrIncorrectOrderNumber,
+				userID:       "userTest",
+			},
+			args: args{w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+			},
+		},
+		{
+			name: "test4",
+			fields: fields{
+				NodeService:  suite.NodeService,
+				statusReturn: http.StatusInternalServerError,
+				err:          errors.New("Test error"),
+				userID:       "userTest",
+			},
+			args: args{w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
 			},
 		},
 	}
@@ -588,7 +630,18 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 			h := &Handlers{
 				NodeService: tt.fields.NodeService,
 			}
+
+			//var data models.WithdrawData
+			var dataret models.WithdrawData
+			textRead, err := io.ReadAll(tt.args.r.Body)
+			suite.Require().NoError(err)
+			err = json.Unmarshal(textRead, &dataret)
+			suite.Require().NoError(err)
+			var userIDCTX models.CtxString = "userID"
+			tt.args.r = tt.args.r.WithContext(context.WithValue(tt.args.r.Context(), userIDCTX, tt.fields.userID))
+			suite.NodeService.EXPECT().Withdraw(tt.args.r.Context(), dataret, tt.fields.userID).Return(tt.fields.err)
 			h.Withdraw(tt.args.w, tt.args.r)
+
 		})
 	}
 }
