@@ -113,3 +113,25 @@ func (suite *TestSuite) TestDownloadOrder() {
 		})
 	}
 }
+
+func (suite *TestSuite) Test_luhnAlgorithm() {
+	type args struct {
+		number string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Test",
+		},
+	}
+	for _, tt := range tests {
+		suite.Run(tt.name, func(t *testing.T) {
+			if got := luhnAlgorithm(tt.args.number); got != tt.want {
+				t.Errorf("luhnAlgorithm() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
