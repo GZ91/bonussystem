@@ -175,6 +175,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+	defer r.Body.Close()
 	var dataRegist models.DataRegisteration
 	err = json.Unmarshal(textBody, &dataRegist)
 	if err != nil {
@@ -200,14 +201,16 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) Withdraw(w http.ResponseWriter, r *http.Request) {
-	var userIDCTX models.CtxString = "userID"
-	userID := r.Context().Value(userIDCTX).(string)
+
 	textBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var data models.WithdrawData
+	defer r.Body.Close()
+	var userIDCTX models.CtxString = "userID"
+	userID := r.Context().Value(userIDCTX).(string)
+	var data models.WithdrawData //для модульного тестирования
 	err = json.Unmarshal(textBody, &data)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

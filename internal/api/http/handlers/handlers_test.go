@@ -506,7 +506,7 @@ func (suite *TestSuite) TestHandlers_Login() {
 		{
 			name: "Test 2",
 			args: args{
-				r: httptest.NewRequest(http.MethodGet, "/api/user/login", strings.NewReader(`{ "login": "<login>2", "password": ""}`)),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/login", strings.NewReader(`{ "login": "<login>2", "password": ""}`)),
 				w: httptest.NewRecorder(),
 			},
 			fields: fields{
@@ -566,6 +566,7 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 		statusReturn int
 		err          error
 		userID       string
+		data         models.WithdrawData
 	}
 	type args struct {
 		w *httptest.ResponseRecorder
@@ -582,10 +583,11 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 				NodeService:  suite.NodeService,
 				statusReturn: http.StatusOK,
 				err:          nil,
-				userID:       "userTest",
+				userID:       "userTest1",
+				data:         models.WithdrawData{Sum: 751, Order: "2377225624"},
 			},
 			args: args{w: httptest.NewRecorder(),
-				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"sum":751.0, "order":"2377225624"}`)),
 			},
 		},
 		{
@@ -594,10 +596,11 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 				NodeService:  suite.NodeService,
 				statusReturn: http.StatusPaymentRequired,
 				err:          errorsapp.ErrInsufficientFunds,
-				userID:       "userTest",
+				userID:       "userTest2",
+				data:         models.WithdrawData{Sum: 751, Order: "2377225624"},
 			},
 			args: args{w: httptest.NewRecorder(),
-				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"sum":751.0, "order":"2377225624"}`)),
 			},
 		},
 		{
@@ -606,10 +609,11 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 				NodeService:  suite.NodeService,
 				statusReturn: http.StatusUnprocessableEntity,
 				err:          errorsapp.ErrIncorrectOrderNumber,
-				userID:       "userTest",
+				userID:       "userTest3",
+				data:         models.WithdrawData{Sum: 751, Order: "2377225624"},
 			},
 			args: args{w: httptest.NewRecorder(),
-				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"sum":751.0, "order":"2377225624"}`)),
 			},
 		},
 		{
@@ -618,10 +622,11 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 				NodeService:  suite.NodeService,
 				statusReturn: http.StatusInternalServerError,
 				err:          errors.New("Test error"),
-				userID:       "userTest",
+				userID:       "userTest4",
+				data:         models.WithdrawData{Sum: 751, Order: "2377225624"},
 			},
 			args: args{w: httptest.NewRecorder(),
-				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"order": "2377225624","sum": 751}`)),
+				r: httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", strings.NewReader(`{"sum":751.0, "order":"2377225624"}`)),
 			},
 		},
 	}
@@ -630,18 +635,11 @@ func (suite *TestSuite) TestHandlers_Withdraw() {
 			h := &Handlers{
 				NodeService: tt.fields.NodeService,
 			}
-
-			//var data models.WithdrawData
-			var dataret models.WithdrawData
-			textRead, err := io.ReadAll(tt.args.r.Body)
-			suite.Require().NoError(err)
-			err = json.Unmarshal(textRead, &dataret)
-			suite.Require().NoError(err)
 			var userIDCTX models.CtxString = "userID"
 			tt.args.r = tt.args.r.WithContext(context.WithValue(tt.args.r.Context(), userIDCTX, tt.fields.userID))
-			suite.NodeService.EXPECT().Withdraw(tt.args.r.Context(), dataret, tt.fields.userID).Return(tt.fields.err)
+			suite.NodeService.EXPECT().Withdraw(tt.args.r.Context(), tt.fields.data, tt.fields.userID).Return(tt.fields.err)
 			h.Withdraw(tt.args.w, tt.args.r)
-
+			suite.Assert().Equal(tt.fields.statusReturn, tt.args.w.Code)
 		})
 	}
 }
