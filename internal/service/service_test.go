@@ -124,13 +124,20 @@ func (suite *TestSuite) Test_luhnAlgorithm() {
 		want bool
 	}{
 		{
-			name: "Test",
+			name: "Test 1",
+			args: args{number: "12345678903"},
+			want: true,
+		},
+		{
+			name: "Test 2",
+			args: args{number: "12345678902"},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
-		suite.Run(tt.name, func(t *testing.T) {
+		suite.Run(tt.name, func() {
 			if got := luhnAlgorithm(tt.args.number); got != tt.want {
-				t.Errorf("luhnAlgorithm() = %v, want %v", got, tt.want)
+				suite.Errorf(errors.New("not correct returned"), "not correct returned")
 			}
 		})
 	}
