@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/GZ91/bonussystem/internal/app/logger"
 	"github.com/GZ91/bonussystem/internal/errorsapp"
+	"github.com/GZ91/bonussystem/internal/models"
 	mocksStorager "github.com/GZ91/bonussystem/internal/service/mocks"
 	"github.com/stretchr/testify/suite"
 	"sync"
@@ -138,6 +139,52 @@ func (suite *TestSuite) Test_luhnAlgorithm() {
 		suite.Run(tt.name, func() {
 			if got := luhnAlgorithm(tt.args.number); got != tt.want {
 				suite.Errorf(errors.New("not correct returned"), "not correct returned")
+			}
+		})
+	}
+}
+
+func TestNodeService_Withdraw(t *testing.T) {
+	type fields struct {
+		nodeStorage mocksStorager.StorageStorage
+		conf        Configer
+		mutexOrder  sync.RWMutex
+		orderLocks  map[string]chan struct{}
+		mutexClient sync.RWMutex
+		clientLocks map[string]chan struct{}
+	}
+	type args struct {
+		ctx    context.Context
+		data   models.WithdrawData
+		userID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test 1",
+			args:args{ctx:context.Background(),
+				data:models.WithdrawData{Order: "", Sum:},
+				userID: "testUser",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &NodeService{
+				nodeStorage: tt.fields.nodeStorage,
+				conf:        tt.fields.conf,
+				mutexOrder:  tt.fields.mutexOrder,
+				orderLocks:  make(map[string]chan struct{}),
+				mutexClient: tt.fields.mutexClient,
+				clientLocks:  make(map[string]chan struct{}),
+			}
+
+			if err := r.Withdraw(tt.args.ctx, tt.args.data, tt.args.userID); (err != nil) != tt.wantErr {
+				t.Errorf("Withdraw() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
