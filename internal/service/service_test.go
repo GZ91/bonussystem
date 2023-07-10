@@ -34,9 +34,9 @@ func (suite *TestSuite) TestDownloadOrder() {
 	type fields struct {
 		nodeStorage *mocks.Storage
 		conf        *mocks.Configer
-		mutexOrder  sync.RWMutex
+		mutexOrder  *sync.RWMutex
 		orderLocks  map[string]chan struct{}
-		mutexClient sync.RWMutex
+		mutexClient *sync.RWMutex
 		clientLocks map[string]chan struct{}
 	}
 	type args struct {
@@ -102,9 +102,7 @@ func (suite *TestSuite) TestDownloadOrder() {
 			r := &NodeService{
 				nodeStorage: tt.fields.nodeStorage,
 				conf:        tt.fields.conf,
-				mutexOrder:  tt.fields.mutexOrder,
 				orderLocks:  tt.fields.orderLocks,
-				mutexClient: tt.fields.mutexClient,
 				clientLocks: tt.fields.clientLocks,
 			}
 			suite.NodeStorage.EXPECT().CreateOrder(tt.args.ctx, tt.args.number, tt.args.userID).Return(tt.err)
