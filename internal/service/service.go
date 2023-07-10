@@ -167,21 +167,27 @@ func (r *NodeService) DownloadOrder(ctx context.Context, number, userID string) 
 	return
 }
 
-func luhnAlgorithm(number string) bool {
-	sum := 0
-	isSecond := false
-	for i := len(number) - 1; i >= 0; i-- {
-		digit := int(number[i] - '0')
-		if isSecond {
-			digit *= 2
-			if digit > 9 {
-				digit -= 9
-			}
+func luhnAlgorithm(value string) bool {
+	digits := []int{}
+	for _, char := range value {
+		if char >= '0' && char <= '9' {
+			digits = append(digits, int(char-'0'))
 		}
-		sum += digit
-		isSecond = !isSecond
 	}
+
+	for i := len(digits) - 2; i >= 0; i -= 2 {
+		digits[i] *= 2
+		if digits[i] > 9 {
+			digits[i] -= 9
+		}
+	}
+	sum := 0
+	for _, digit := range digits {
+		sum += digit
+	}
+
 	return sum%10 == 0
+
 }
 
 func (r *NodeService) GetOrders(ctx context.Context, userID string) ([]models.DataOrder, error) {
