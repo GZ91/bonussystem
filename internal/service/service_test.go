@@ -5,22 +5,22 @@ import (
 	"errors"
 	"github.com/GZ91/bonussystem/internal/app/logger"
 	"github.com/GZ91/bonussystem/internal/errorsapp"
-	"github.com/GZ91/bonussystem/internal/models"
-	mocksStorager "github.com/GZ91/bonussystem/internal/service/mocks"
+	"github.com/GZ91/bonussystem/internal/service/mocks"
 	"github.com/stretchr/testify/suite"
 	"sync"
 	"testing"
+	"time"
 )
 
 type TestSuite struct {
 	suite.Suite
-	NodeStorage *mocksStorager.Storage
-	Config      *mocksStorager.Configer
+	NodeStorage *mocks.Storage
+	Config      *mocks.Configer
 }
 
 func (suite *TestSuite) SetupTest() {
-	suite.NodeStorage = new(mocksStorager.Storage)
-	suite.Config = new(mocksStorager.Configer)
+	suite.NodeStorage = new(mocks.Storage)
+	suite.Config = new(mocks.Configer)
 	logger.Initializing("info")
 	suite.Config.EXPECT().GetAddressAccrual().Return("addressAccrual").Maybe()
 	suite.Config.EXPECT().GetSecretKey().Return("SecretKey").Maybe()
@@ -32,8 +32,8 @@ func TestRunSuite(t *testing.T) {
 
 func (suite *TestSuite) TestDownloadOrder() {
 	type fields struct {
-		nodeStorage *mocksStorager.Storage
-		conf        *mocksStorager.Configer
+		nodeStorage *mocks.Storage
+		conf        *mocks.Configer
 		mutexOrder  sync.RWMutex
 		orderLocks  map[string]chan struct{}
 		mutexClient sync.RWMutex
@@ -144,48 +144,28 @@ func (suite *TestSuite) Test_luhnAlgorithm() {
 	}
 }
 
-func TestNodeService_Withdraw(t *testing.T) {
-	type fields struct {
-		nodeStorage mocksStorager.StorageStorage
-		conf        Configer
-		mutexOrder  sync.RWMutex
-		orderLocks  map[string]chan struct{}
-		mutexClient sync.RWMutex
-		clientLocks map[string]chan struct{}
-	}
-	type args struct {
-		ctx    context.Context
-		data   models.WithdrawData
-		userID string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "test 1",
-			args:args{ctx:context.Background(),
-				data:models.WithdrawData{Order: "", Sum:},
-				userID: "testUser",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &NodeService{
-				nodeStorage: tt.fields.nodeStorage,
-				conf:        tt.fields.conf,
-				mutexOrder:  tt.fields.mutexOrder,
-				orderLocks:  make(map[string]chan struct{}),
-				mutexClient: tt.fields.mutexClient,
-				clientLocks:  make(map[string]chan struct{}),
-			}
+func TestNodeService_LockOrder(t *testing.T) {
+	var v NodeService
+	v.orderLocks = make(map[string]chan struct{})
+	order := "sakpfoafskasf"
+	go func() {
+		v.LockOrder(order)
+		time.Sleep(5 * time.Second)
+		v.UnclockOrder(order)
+	}()
+	v.LockOrder(order)
+	v.UnclockOrder(order)
+}
 
-			if err := r.Withdraw(tt.args.ctx, tt.args.data, tt.args.userID); (err != nil) != tt.wantErr {
-				t.Errorf("Withdraw() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
+func TestNodeService_LockClients(t *testing.T) {
+	var v NodeService
+	v.clientLocks = make(map[string]chan struct{})
+	usderID := "sakpfoafskasf"
+	go func() {
+		v.LockClient(usderID)
+		time.Sleep(5 * time.Second)
+		v.UnclockClient(usderID)
+	}()
+	v.LockClient(usderID)
+	v.UnclockClient(usderID)
 }
