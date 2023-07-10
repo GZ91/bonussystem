@@ -34,7 +34,7 @@ type WithdrawData struct {
 type WithdrawalsData struct {
 	Order       string  `json:"order"`
 	Sum         float64 `json:"sum"`
-	ProcessedAt string  `json:"processed_at,omitempty""`
+	ProcessedAt string  `json:"processed_at,omitempty"`
 }
 
 type DataForProcessing struct {
