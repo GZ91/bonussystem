@@ -146,12 +146,18 @@ func TestNodeService_LockOrder(t *testing.T) {
 	var v NodeService
 	v.orderLocks = make(map[string]chan struct{})
 	order := "sakpfoafskasf"
+	var flag bool
 	go func() {
 		v.LockOrder(order)
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Millisecond)
+		flag = true
 		v.UnclockOrder(order)
 	}()
+	time.Sleep(1 * time.Millisecond)
 	v.LockOrder(order)
+	if !flag {
+		t.Error(errors.New("not correct work system block orders"))
+	}
 	v.UnclockOrder(order)
 }
 
@@ -159,11 +165,18 @@ func TestNodeService_LockClients(t *testing.T) {
 	var v NodeService
 	v.clientLocks = make(map[string]chan struct{})
 	usderID := "sakpfoafskasf"
+	var flag bool
 	go func() {
 		v.LockClient(usderID)
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Millisecond)
+		flag = true
 		v.UnclockClient(usderID)
 	}()
+	time.Sleep(1 * time.Millisecond)
 	v.LockClient(usderID)
+	if !flag {
+		t.Error(errors.New("not correct work system block clients"))
+	}
+
 	v.UnclockClient(usderID)
 }
